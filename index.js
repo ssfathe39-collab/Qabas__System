@@ -3,7 +3,9 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// إنشاء سيرفر ويب بسيط ليستجيب لخدمة UptimeRobot
+// ==========================================
+// 1. سيرفر Express لإبقاء البوت حياً (UptimeRobot)
+// ==========================================
 app.get('/', (req, res) => {
   res.send('Bot is running alive!');
 });
@@ -12,7 +14,9 @@ app.listen(PORT, () => {
   console.log(`🌐 Server Express running on port ${PORT}`);
 });
 
-// باقي كود ديسكورد الخاص بك...
+// ==========================================
+// 2. إعدادات وتجهيز Discord Client
+// ==========================================
 const { 
   Client, 
   GatewayIntentBits, 
@@ -39,7 +43,7 @@ const client = new Client({
 });
 
 // ==========================================
-// 0. تحديد أيديهات الرولات لكل أمر
+// 3. تحديد أيديهات الرولات لكل أمر
 // ==========================================
 const COMMAND_ROLES = {
   'ban':          ['1533546100500201483', '1533130936999481534', '1533547914566177029', '1533548451701330101', '1533843524078796810', '1533122352194257018', '1533130578625433610', '1533130628889968860', '1515104781830586439', '1533130205961388072'],
@@ -78,7 +82,7 @@ function isAllowedForCommand(member, commandKey) {
 }
 
 // ==========================================
-// 1. قواعد البيانات والأسعار
+// 4. قواعد البيانات والأسعار
 // ==========================================
 const userBalance = new Map();
 const userBag = new Map();
@@ -123,7 +127,7 @@ function canModerate(executor, target) {
 }
 
 // ==========================================
-// 2. بطاقات Canvas
+// 5. بطاقات Canvas (الرصيد والحقيبة)
 // ==========================================
 async function generateBalanceCard(user, balance) {
   const canvas = createCanvas(800, 450);
@@ -230,7 +234,7 @@ async function generateBagCard(user, bag) {
 }
 
 // ==========================================
-// 3. قائمة جميع أوامر السلاش (Slash Commands)
+// 6. قائمة جميع أوامر السلاش (Slash Commands)
 // ==========================================
 const commands = [
   new SlashCommandBuilder().setName('balance').setDescription('عرض بطاقة الرصيد المالية الخاصة بك'),
@@ -307,7 +311,7 @@ const commands = [
 ].map(cmd => cmd.toJSON());
 
 // ==========================================
-// 4. التسجيل الفوري الصحيح عند تجهيز البوت
+// 7. التسجيل الصحيح لمنع تكرار أوامر السلاش
 // ==========================================
 client.once('ready', async () => {
   console.log(`✅ البوت أونلاين الآن باسم: ${client.user.tag}`);
@@ -315,28 +319,29 @@ client.once('ready', async () => {
   const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
 
   try {
-      console.log('⏳ جاري رفع جميع الأوامر إلى ديسكورد...');
-      
+      console.log('⏳ جاري إزالة أي أوامر مكررة وتحديث الأوامر الحالية...');
+
       if (GUILD_ID && GUILD_ID !== 'YOUR_GUILD_ID_HERE') {
+          await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
           await rest.put(
               Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
               { body: commands }
           );
-          console.log('🚀 [نجاح] تم تسجيل وتحديث كافة أوامر السلاش في سيرفرك مباشرة!');
+          console.log('🚀 [تم بنجاح] مسح الأوامر القديمة وتسجيل أوامر السلاش بدون أي تكرار!');
       } else {
           await rest.put(
               Routes.applicationCommands(CLIENT_ID),
               { body: commands }
           );
-          console.log('🚀 [نجاح] تم تسجيل أوامر السلاش عالمياً.');
+          console.log('🚀 [تم بنجاح] تسجيل الأوامر عالمياً بدون تكرار.');
       }
   } catch (err) {
-      console.error('❌ خطأ أثناء إرسال الأوامر إلى ديسكورد:', err);
+      console.error('❌ خطأ أثناء تحديث الأوامر:', err);
   }
 });
 
 // ==========================================
-// 5. استقبال وتنفيذ أوامر السلاش (Interaction Handler)
+// 8. استقبال وتنفيذ أوامر السلاش (Slash Commands)
 // ==========================================
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
@@ -370,7 +375,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (commandName === 'market') {
-      let embed = new EmbedBuilder().setTitle('أسعار السوق المالي الحالي').setColor('Gold');
+      let embed = new EmbedBuilder().setTitle('🛒 أسعار السوق المالي الحالي').setColor('Gold');
       for (const [item, price] of Object.entries(marketPrices)) {
           embed.addFields({ name: item, value: `**${price.toLocaleString()}**$`, inline: true });
       }
@@ -475,7 +480,7 @@ client.on('interactionCreate', async interaction => {
   if (commandName === 'leaderboard') {
       const sorted = Array.from(userBalance.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
       let desc = sorted.map(([id, bal], i) => `**#${i + 1}** <@${id}> - \`${bal.toLocaleString()}$\``).join('\n');
-      return interaction.reply({ embeds: [new EmbedBuilder().setTitle('قائمة أثرى 10 أعضاء').setDescription(desc || 'لا يوجد بيانات.').setColor('Yellow')] });
+      return interaction.reply({ embeds: [new EmbedBuilder().setTitle('🏆 قائمة أثرى 10 أعضاء').setDescription(desc || 'لا يوجد بيانات.').setColor('Yellow')] });
   }
 
   if (commandName === 'ban') {
@@ -562,27 +567,40 @@ client.on('interactionCreate', async interaction => {
 });
 
 // ==========================================
-// 6. استقبال وتنفيذ الأوامر النصية المباشرة
+// 9. استقبال وتنفيذ الأوامر النصية المباشرة (Message Commands)
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
   const text = message.content.trim();
   const args = text.split(/\s+/);
-  const cmd = args[0];
+  const cmd = args[0].toLowerCase();
 
+  // 1. أمر الرصيد النصي
   if (cmd === 'رصيدي' || cmd === 'رصيد') {
       if (!isAllowedForCommand(message.member, 'balance')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const buffer = await generateBalanceCard(message.author, getBalance(message.author.id));
       return message.reply({ files: [new AttachmentBuilder(buffer, { name: 'balance.png' })] });
   }
 
+  // 2. أمر الحقيبة النصي
   if (cmd === 'حقيبة' || cmd === 'حقيبه' || cmd === 'محفظة' || cmd === 'محفظه') {
       if (!isAllowedForCommand(message.member, 'bag')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const buffer = await generateBagCard(message.author, getBag(message.author.id));
       return message.reply({ files: [new AttachmentBuilder(buffer, { name: 'bag.png' })] });
   }
 
+  // 3. أمر السوق النصي
+  if (cmd === 'سوق' || cmd === 'السوق' || cmd === 'سوق-الموارد') {
+      if (!isAllowedForCommand(message.member, 'market')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+      let embed = new EmbedBuilder().setTitle('🛒 أسعار السوق المالي الحالي').setColor('Gold');
+      for (const [item, price] of Object.entries(marketPrices)) {
+          embed.addFields({ name: item, value: `**${price.toLocaleString()}**$`, inline: true });
+      }
+      return message.reply({ embeds: [embed] });
+  }
+
+  // 4. أمر تحويل المال النصي
   if (cmd === 'تحويل' || cmd === 'اعطاء' || cmd === 'إعطاء') {
       if (!isAllowedForCommand(message.member, 'give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
@@ -597,21 +615,31 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`تم تحويل **${amount.toLocaleString()}**$ إلى ${target}`)] });
   }
 
+  // 5. أمر شحن / إضافة رصيد نصي (إداري)
   if (text.startsWith('اضف رصيد') || text.startsWith('أضف رصيد') || text.startsWith('شحن رصيد')) {
       if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
-      const amount = parseInt(args[3]);
-      if (!target || isNaN(amount) || amount <= 0) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `اضف رصيد @العضو المبلغ`')] });
+      const lastArg = args[args.length - 1];
+      const amount = parseInt(lastArg);
+
+      if (!target || isNaN(amount) || amount <= 0) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `شحن رصيد @العضو المبلغ` أو `اضف رصيد @العضو المبلغ`')] });
+      }
 
       userBalance.set(target.id, getBalance(target.id) + amount);
-      return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setDescription(`تم منح **${amount.toLocaleString()}**$ إلى ${target}`)] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setTitle('👑 إضافة / شحن رصيد').setDescription(`تم شحن **${amount.toLocaleString()}**$ لحساب ${target}`)] });
   }
 
+  // 6. أمر خصم رصيد نصي (إداري)
   if (text.startsWith('خصم رصيد') || text.startsWith('خصم نقاط')) {
       if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
-      const amount = parseInt(args[3]);
-      if (!target || isNaN(amount) || amount <= 0) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم رصيد @العضو المبلغ`')] });
+      const lastArg = args[args.length - 1];
+      const amount = parseInt(lastArg);
+
+      if (!target || isNaN(amount) || amount <= 0) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم رصيد @العضو المبلغ`')] });
+      }
 
       const currentBal = getBalance(target.id);
       const newBal = Math.max(0, currentBal - amount);
@@ -619,9 +647,44 @@ client.on('messageCreate', async message => {
 
       return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setTitle('🔻 خصم رصيد').setDescription(`تم خصم **${amount.toLocaleString()}**$ من ${target}\nالرصيد المتبقي: **${newBal.toLocaleString()}**$`)] });
   }
+
+  // 7. أمر شحن / إضافة مورد نصي (إداري)
+  if (text.startsWith('اضف مورد') || text.startsWith('أضف مورد') || text.startsWith('شحن مورد')) {
+      if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+      const target = message.mentions.members.first();
+      const item = args[2];
+      const amount = parseInt(args[3]);
+
+      if (!target || !item || !marketPrices[item] || isNaN(amount) || amount <= 0) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `اضف مورد @العضو اسم_المورد الكمية`\nالموارد المتاحة: (الماس, ذهب, نحاس, حديد, يورانيوم, وقود)')] });
+      }
+
+      const bag = getBag(target.id);
+      bag[item] = (bag[item] || 0) + amount;
+      return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setTitle('👑 إضافة / شحن مورد').setDescription(`تم إضافة **${amount}** من **${item}** إلى حقيبة ${target}`)] });
+  }
+
+  // 8. أمر خصم مورد نصي (إداري)
+  if (text.startsWith('خصم مورد')) {
+      if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+      const target = message.mentions.members.first();
+      const item = args[2];
+      const amount = parseInt(args[3]);
+
+      if (!target || !item || !marketPrices[item] || isNaN(amount) || amount <= 0) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم مورد @العضو اسم_المورد الكمية`\nالموارد المتاحة: (الماس, ذهب, نحاس, حديد, يورانيوم, وقود)')] });
+      }
+
+      const bag = getBag(target.id);
+      const currentAmount = bag[item] || 0;
+      const newAmount = Math.max(0, currentAmount - amount);
+      bag[item] = newAmount;
+
+      return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setTitle('🔻 خصم مورد').setDescription(`تم خصم **${amount}** من **${item}** من حقيبة ${target}\nالكمية المتبقية: **${newAmount}**`)] });
+  }
 });
 
 // ==========================================
-// 7. تسجيل الدخول وتشغيل البوت
+// 10. تسجيل الدخول وتشغيل البوت
 // ==========================================
 client.login(BOT_TOKEN);
