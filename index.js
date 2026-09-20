@@ -226,7 +226,6 @@ const commands = [
       .addUserOption(opt => opt.setName('target').setDescription('الشخص المراد تحويل المال له').setRequired(true))
       .addIntegerOption(opt => opt.setName('amount').setDescription('المبلغ').setRequired(true).setMinValue(1)),
   
-  // الأوامر التي طلبتا مؤخراً
   new SlashCommandBuilder().setName('add-money').setDescription('إعطاء رصيد لعضو (للمشرفين)')
       .addUserOption(opt => opt.setName('target').setDescription('العضو المستهدف').setRequired(true))
       .addIntegerOption(opt => opt.setName('amount').setDescription('المبلغ').setRequired(true).setMinValue(1)),
@@ -294,9 +293,9 @@ const commands = [
 ].map(cmd => cmd.toJSON());
 
 // ==========================================
-// 4. التسجيل الفوري الصحيح وتعديل الحدث بـ clientReady
+// 4. التسجيل الفوري الصحيح عند تجهيز البوت
 // ==========================================
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   console.log(`✅ البوت أونلاين الآن باسم: ${client.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(BOT_TOKEN);
@@ -468,7 +467,7 @@ client.on('interactionCreate', async interaction => {
   if (commandName === 'ban') {
       const target = interaction.options.getMember('target');
       if (!target || !canModerate(interaction.member, target) || !target.bannable) {
-          return interaction.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('لا بمكنك حظر هذا الشخص!')], ephemeral: true });
+          return interaction.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('لا يمكنك حظر هذا الشخص!')], ephemeral: true });
       }
       const reason = interaction.options.getString('reason') || 'بدون سبب';
       await target.ban({ reason });
@@ -603,39 +602,12 @@ client.on('messageCreate', async message => {
       const currentBal = getBalance(target.id);
       const newBal = Math.max(0, currentBal - amount);
       userBalance.set(target.id, newBal);
-      return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`تم خصم **${amount.toLocaleString()}**$ من ${target}\nالمتبقي له: **${newBal.toLocaleString()}**$`)] });
-  }
 
-  if (text.startsWith('اضف مورد') || text.startsWith('أضف مورد')) {
-      if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
-      const target = message.mentions.members.first();
-      const item = args[3];
-      const amount = parseInt(args[4]);
-
-      if (!target || !item || isNaN(amount) || !marketPrices[item]) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `اضف مورد @العضو اسم_المورد الكمية`')] });
-
-      const bag = getBag(target.id);
-      bag[item] = (bag[item] || 0) + amount;
-      return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setDescription(`تم منح **${amount}** من **${item}** إلى ${target}`)] });
-  }
-
-  if (text.startsWith('خصم مورد')) {
-      if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
-      const target = message.mentions.members.first();
-      const item = args[3];
-      const amount = parseInt(args[4]);
-
-      if (!target || !item || isNaN(amount) || !marketPrices[item]) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم مورد @العضو اسم_المورد الكمية`')] });
-
-      const bag = getBag(target.id);
-      const currentAmount = bag[item] || 0;
-      const newAmount = Math.max(0, currentAmount - amount);
-      bag[item] = newAmount;
-      return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`تم خصم **${amount}** من **${item}** من ${target}\nالمتبقي له: **${newAmount}**`)] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setTitle('🔻 خصم رصيد').setDescription(`تم خصم **${amount.toLocaleString()}**$ من ${target}\nالرصيد المتبقي: **${newBal.toLocaleString()}**$`)] });
   }
 });
 
 // ==========================================
-// 7. تشغيل البوت
+// 7. تسجيل الدخول وتشغيل البوت
 // ==========================================
 client.login(BOT_TOKEN);
