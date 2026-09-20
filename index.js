@@ -758,7 +758,7 @@ client.on('messageCreate', async message => {
   }
 
   // 3. أمر طلب شراء مورد من عضو آخر (نصي) 🛒
-  if (cmd === 'طلب-شراء' || cmd === 'طلب_شراء' || cmd === 'اشتر-من') {
+  if (cmd === 'طلب شراء' || cmd === 'اطلب شراء') {
       if (!isAllowedForCommand(message.member, 'buy_request')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
 
       const target = message.mentions.members.first(); // البائع
@@ -802,7 +802,7 @@ client.on('messageCreate', async message => {
   }
 
   // 5. أمر السوق النصي
-  if (cmd === 'سوق' || cmd === 'السوق' || cmd === 'سوق-الموارد') {
+  if (cmd === 'سوق' || cmd === 'السوق' || cmd === 'سوق الموارد') {
       if (!isAllowedForCommand(message.member, 'market')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       let embed = new EmbedBuilder().setTitle('🛒 أسعار السوق المالي الحالي').setColor('Gold');
       for (const [item, price] of Object.entries(marketPrices)) {
