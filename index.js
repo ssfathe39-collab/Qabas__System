@@ -721,7 +721,7 @@ client.on('messageCreate', async message => {
   }
 
   // 2. أمر التجارة النصي (عرض بيع لعضو) 🤝
-  if (cmd === 'تجارة' || cmd === 'تجاراه' || cmd === 'تداول') {
+  if (cmd === 'تجارة' || cmd === 'تجاره' || cmd === 'تداول') {
       if (!isAllowedForCommand(message.member, 'trade')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
 
       const target = message.mentions.members.first();
