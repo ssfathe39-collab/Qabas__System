@@ -70,6 +70,7 @@ const COMMAND_ROLES = {
   'buy':          [], 
   'sell':         [], 
   'trade':        [],
+  'buy_request':  [],
   'leaderboard':  [], 
   'server':       []
 };
@@ -240,14 +241,36 @@ async function generateBagCard(user, bag) {
 // ==========================================
 // 6. قائمة جميع أوامر السلاش (Slash Commands)
 // ==========================================
+const itemChoices = [
+  { name: 'الماس', value: 'الماس' },
+  { name: 'ذهب', value: 'ذهب' },
+  { name: 'نحاس', value: 'نحاس' },
+  { name: 'حديد', value: 'حديد' },
+  { name: 'يورانيوم', value: 'يورانيوم' },
+  { name: 'وقود', value: 'وقود' }
+];
+
 const commands = [
-  new SlashCommandBuilder().setName('balance').setDescription('عرض بطاقة الرصيد المالية الخاصة بك'),
+  new SlashCommandBuilder().setName('balance').setDescription('عرض بطاقة الرصيد المالية الخاصة بك أو لعضو آخر')
+      .addUserOption(opt => opt.setName('target').setDescription('العضو المراد معرفة رصيده (اختياري)')),
   new SlashCommandBuilder().setName('bag').setDescription('عرض الحقيبة والموارد التي تمتلكها'),
   new SlashCommandBuilder().setName('market').setDescription('عرض أسعار الموارد في السوق الحالي'),
   new SlashCommandBuilder().setName('give').setDescription('تحويل أو إعطاء مبلغ مالي لشخص آخر')
       .addUserOption(opt => opt.setName('target').setDescription('الشخص المراد تحويل المال له').setRequired(true))
       .addIntegerOption(opt => opt.setName('amount').setDescription('المبلغ').setRequired(true).setMinValue(1)),
-  
+
+  new SlashCommandBuilder().setName('trade').setDescription('عرض بيع موارد لعضو آخر')
+      .addUserOption(opt => opt.setName('target').setDescription('المشتري').setRequired(true))
+      .addStringOption(opt => opt.setName('item').setDescription('المورد').setRequired(true).addChoices(...itemChoices))
+      .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية').setRequired(true).setMinValue(1))
+      .addIntegerOption(opt => opt.setName('price').setDescription('السعر').setRequired(true).setMinValue(1)),
+
+  new SlashCommandBuilder().setName('buy-request').setDescription('إرسال طلب شراء موارد من عضو آخر')
+      .addUserOption(opt => opt.setName('target').setDescription('البائع').setRequired(true))
+      .addStringOption(opt => opt.setName('item').setDescription('المورد').setRequired(true).addChoices(...itemChoices))
+      .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية').setRequired(true).setMinValue(1))
+      .addIntegerOption(opt => opt.setName('price').setDescription('السعر المعروض').setRequired(true).setMinValue(1)),
+
   new SlashCommandBuilder().setName('add-money').setDescription('إعطاء رصيد لعضو (للمشرفين)')
       .addUserOption(opt => opt.setName('target').setDescription('العضو المستهدف').setRequired(true))
       .addIntegerOption(opt => opt.setName('amount').setDescription('المبلغ').setRequired(true).setMinValue(1)),
@@ -258,35 +281,19 @@ const commands = [
 
   new SlashCommandBuilder().setName('add-item').setDescription('إعطاء مورد لعضو (للمشرفين)')
       .addUserOption(opt => opt.setName('target').setDescription('العضو المستهدف').setRequired(true))
-      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true)
-          .addChoices(
-              { name: 'الماس', value: 'الماس' },
-              { name: 'ذهب', value: 'ذهب' },
-              { name: 'نحاس', value: 'نحاس' },
-              { name: 'حديد', value: 'حديد' },
-              { name: 'يورانيوم', value: 'يورانيوم' },
-              { name: 'وقود', value: 'وقود' }
-          ))
+      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true).addChoices(...itemChoices))
       .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية').setRequired(true).setMinValue(1)),
 
   new SlashCommandBuilder().setName('remove-item').setDescription('خصم موارد من حقيبة عضو (للمشرفين)')
       .addUserOption(opt => opt.setName('target').setDescription('العضو المستهدف').setRequired(true))
-      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true)
-          .addChoices(
-              { name: 'الماس', value: 'الماس' },
-              { name: 'ذهب', value: 'ذهب' },
-              { name: 'نحاس', value: 'نحاس' },
-              { name: 'حديد', value: 'حديد' },
-              { name: 'يورانيوم', value: 'يورانيوم' },
-              { name: 'وقود', value: 'وقود' }
-          ))
+      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true).addChoices(...itemChoices))
       .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية المراد خصمها').setRequired(true).setMinValue(1)),
 
   new SlashCommandBuilder().setName('buy').setDescription('شراء موارد من السوق')
-      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true))
+      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true).addChoices(...itemChoices))
       .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية').setRequired(true).setMinValue(1)),
   new SlashCommandBuilder().setName('sell').setDescription('بيع موارد من حقيبتك للسوق')
-      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true))
+      .addStringOption(opt => opt.setName('item').setDescription('اسم المورد').setRequired(true).addChoices(...itemChoices))
       .addIntegerOption(opt => opt.setName('amount').setDescription('الكمية').setRequired(true).setMinValue(1)),
   new SlashCommandBuilder().setName('leaderboard').setDescription('عرض قائمة أثرى 10 أعضاء'),
   new SlashCommandBuilder().setName('ban').setDescription('حظر عضو من السيرفر')
@@ -348,10 +355,13 @@ client.once('ready', async () => {
 // 8. استقبال وتنفيذ أوامر السلاش والتفاعلات (Interactions)
 // ==========================================
 client.on('interactionCreate', async interaction => {
-  // التفاعل مع الأزرار (أزرار القبول والرفض للتجارة)
+  // 1. التفاعل مع أزرار الصفحات التجارية (عرض بيع أو طلب شراء)
   if (interaction.isButton()) {
-      if (interaction.customId.startsWith('trade_accept_') || interaction.customId.startsWith('trade_deny_')) {
+      if (interaction.customId.startsWith('trade_accept_') || interaction.customId.startsWith('trade_deny_') ||
+          interaction.customId.startsWith('buyreq_accept_') || interaction.customId.startsWith('buyreq_deny_')) {
+          
           const parts = interaction.customId.split('_');
+          const type = parts[0]; // trade or buyreq
           const action = parts[1]; // accept or deny
           const sellerId = parts[2];
           const buyerId = parts[3];
@@ -359,15 +369,17 @@ client.on('interactionCreate', async interaction => {
           const amount = parseInt(parts[5]);
           const price = parseInt(parts[6]);
 
-          if (interaction.user.id !== buyerId) {
-              return interaction.reply({ content: '❌ هذا العرض موجه لشخص آخر وليس لك!', ephemeral: true });
+          // التحقق من الشخص المسموح له بالضغط
+          const allowedUserId = (type === 'trade') ? buyerId : sellerId;
+          if (interaction.user.id !== allowedUserId) {
+              return interaction.reply({ content: '❌ هذا العرض ليس موهجاً لك!', ephemeral: true });
           }
 
           if (action === 'deny') {
               const cancelEmbed = new EmbedBuilder()
                   .setColor('Red')
                   .setTitle('❌ تم رفض الصفقة')
-                  .setDescription(`قام <@${buyerId}> برفض العرض التجاري المقدم من <@${sellerId}>.`);
+                  .setDescription(`تم رفض العرض التجاري بين <@${sellerId}> و <@${buyerId}>.`);
               return interaction.update({ embeds: [cancelEmbed], components: [] });
           }
 
@@ -375,17 +387,17 @@ client.on('interactionCreate', async interaction => {
               const sellerBag = getBag(sellerId);
               const buyerBalance = getBalance(buyerId);
 
-              // التأكد من أن البائع ما زال يملك الموارد
+              // التأكد من الموارد مع البائع
               if (!sellerBag[item] || sellerBag[item] < amount) {
-                  return interaction.reply({ content: '❌ البائع لم يعد يمتلك هذه الكمية من المورد!', ephemeral: true });
+                  return interaction.reply({ content: '❌ البائع لا يمتلك هذه الكمية الكافية من المورد حالياً!', ephemeral: true });
               }
 
-              // التأكد من أن المشتري يمتلك المبلغ
+              // التأكد من المبلغ مع المشتري
               if (buyerBalance < price) {
-                  return interaction.reply({ content: `❌ رصيدك الحالي (**${buyerBalance.toLocaleString()}$**) لا يكفي لإتمام هذه الصفقة! تحتاج إلى **${price.toLocaleString()}$**.`, ephemeral: true });
+                  return interaction.reply({ content: `❌ المشتري لا يمتلك الرصيد الكافي (**${price.toLocaleString()}$**)!`, ephemeral: true });
               }
 
-              // تنفيذ التبادل
+              // تنفيذ نقل الموارد والمال
               sellerBag[item] -= amount;
               const buyerBag = getBag(buyerId);
               buyerBag[item] = (buyerBag[item] || 0) + amount;
@@ -396,7 +408,7 @@ client.on('interactionCreate', async interaction => {
               const successEmbed = new EmbedBuilder()
                   .setColor('Green')
                   .setTitle('🤝 تم إتمام الصفقة التجارية بنجاح!')
-                  .setDescription(`قام <@${buyerId}> بشراء **${amount}** من **${item}** من <@${sellerId}> بسعر **${price.toLocaleString()}$**.`);
+                  .setDescription(`تم نقل **${amount}** من **${item}** من <@${sellerId}> إلى <@${buyerId}> مقابل **${price.toLocaleString()}$**.`);
 
               return interaction.update({ embeds: [successEmbed], components: [] });
           }
@@ -424,8 +436,69 @@ client.on('interactionCreate', async interaction => {
 
   if (commandName === 'balance') {
       await interaction.deferReply();
-      const buffer = await generateBalanceCard(interaction.user, getBalance(interaction.user.id));
+      const targetUser = interaction.options.getUser('target') || interaction.user;
+      const buffer = await generateBalanceCard(targetUser, getBalance(targetUser.id));
       return interaction.editReply({ files: [new AttachmentBuilder(buffer, { name: 'balance.png' })] });
+  }
+
+  if (commandName === 'trade') {
+      const target = interaction.options.getUser('target');
+      const item = interaction.options.getString('item');
+      const amount = interaction.options.getInteger('amount');
+      const price = interaction.options.getInteger('price');
+
+      if (target.id === interaction.user.id || target.bot) return interaction.reply({ content: '❌ لا يمكنك التداول مع نفسك أو مع البوتات!', ephemeral: true });
+
+      const sellerBag = getBag(interaction.user.id);
+      if (!sellerBag[item] || sellerBag[item] < amount) {
+          return interaction.reply({ content: `❌ أنت لا تمتلك هذه الكمية من **${item}**!`, ephemeral: true });
+      }
+
+      const tradeEmbed = new EmbedBuilder()
+          .setTitle('🤝 عرض بيع موارد')
+          .setColor('Blue')
+          .setDescription(`قام ${interaction.user} بتقديم عرض بيع لـ ${target}:\n\n` +
+                          `📦 **المورد:** ${item}\n` +
+                          `🔢 **الكمية:** ${amount}\n` +
+                          `💰 **السعر المطلـوب:** ${price.toLocaleString()}$\n\n` +
+                          `هل تقبل الشراء؟`);
+
+      const buttonsRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`trade_accept_${interaction.user.id}_${target.id}_${item}_${amount}_${price}`).setLabel('قبول الشراء 🟢').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`trade_deny_${interaction.user.id}_${target.id}_${item}_${amount}_${price}`).setLabel('رفض 🔴').setStyle(ButtonStyle.Danger)
+      );
+
+      return interaction.reply({ content: `${target}`, embeds: [tradeEmbed], components: [buttonsRow] });
+  }
+
+  if (commandName === 'buy-request') {
+      const target = interaction.options.getUser('target'); // البائع
+      const item = interaction.options.getString('item');
+      const amount = interaction.options.getInteger('amount');
+      const price = interaction.options.getInteger('price');
+
+      if (target.id === interaction.user.id || target.bot) return interaction.reply({ content: '❌ لا يمكنك الطلب من نفسك أو البوتات!', ephemeral: true });
+
+      const buyerBal = getBalance(interaction.user.id);
+      if (buyerBal < price) {
+          return interaction.reply({ content: `❌ رصيدك لا يكفي لدفع هذا المبلغ (**${price.toLocaleString()}$**)!`, ephemeral: true });
+      }
+
+      const requestEmbed = new EmbedBuilder()
+          .setTitle('🛒 طلب شراء موارد')
+          .setColor('Orange')
+          .setDescription(`يرغب المشتري ${interaction.user} بشراء موارد من البائع ${target}:\n\n` +
+                          `📦 **المورد:** ${item}\n` +
+                          `🔢 **الكمية:** ${amount}\n` +
+                          `💰 **السعر المعروض:** ${price.toLocaleString()}$\n\n` +
+                          `هل تقبل بيع هذه الموارد؟`);
+
+      const buttonsRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`buyreq_accept_${target.id}_${interaction.user.id}_${item}_${amount}_${price}`).setLabel('قبول البيع 🟢').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`buyreq_deny_${target.id}_${interaction.user.id}_${item}_${amount}_${price}`).setLabel('رفض 🔴').setStyle(ButtonStyle.Danger)
+      );
+
+      return interaction.reply({ content: `${target}`, embeds: [requestEmbed], components: [buttonsRow] });
   }
 
   if (commandName === 'bag') {
@@ -636,21 +709,99 @@ client.on('messageCreate', async message => {
   const args = text.split(/\s+/);
   const cmd = args[0].toLowerCase();
 
-  // 1. أمر الرصيد النصي
+  // 1. أمر الرصيد النصي (للشخص نفسه أو لعضو آخر) 💳
   if (cmd === 'رصيدي' || cmd === 'رصيد') {
       if (!isAllowedForCommand(message.member, 'balance')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
-      const buffer = await generateBalanceCard(message.author, getBalance(message.author.id));
+
+      const targetMember = message.mentions.members.first() || message.member;
+      const targetUser = targetMember.user;
+
+      const buffer = await generateBalanceCard(targetUser, getBalance(targetUser.id));
       return message.reply({ files: [new AttachmentBuilder(buffer, { name: 'balance.png' })] });
   }
 
-  // 2. أمر الحقيبة النصي
+  // 2. أمر التجارة النصي (عرض بيع لعضو) 🤝
+  if (cmd === 'تجارة' || cmd === 'تجاراه' || cmd === 'تداول') {
+      if (!isAllowedForCommand(message.member, 'trade')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+
+      const target = message.mentions.members.first();
+      const item = args.find(arg => marketPrices[arg]);
+      const numbers = args.filter(arg => !isNaN(parseInt(arg))).map(arg => parseInt(arg));
+
+      if (!target || !item || numbers.length < 2 || target.id === message.author.id || target.user.bot) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `تجارة @العضو اسم_المورد الكمية السعر`\nمثال: `تجارة @user الماس 5 2000`')] });
+      }
+
+      const amount = numbers[0];
+      const price = numbers[1];
+
+      const sellerBag = getBag(message.author.id);
+      if (!sellerBag[item] || sellerBag[item] < amount) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`أنت لا تمتلك هذه الكمية من **${item}**! لديك فقط (**${sellerBag[item] || 0}**).`)] });
+      }
+
+      const tradeEmbed = new EmbedBuilder()
+          .setTitle('🤝 عرض بيع موارد')
+          .setColor('Blue')
+          .setDescription(`قام البائع ${message.author} بتقديم عرض بيع لـ ${target}:\n\n` +
+                          `📦 **المورد:** ${item}\n` +
+                          `🔢 **الكمية:** ${amount}\n` +
+                          `💰 **السعر المطلوب:** ${price.toLocaleString()}$\n\n` +
+                          `هل تقبل بهذا العرض؟`);
+
+      const buttonsRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`trade_accept_${message.author.id}_${target.id}_${item}_${amount}_${price}`).setLabel('قبول الصفقة 🟢').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`trade_deny_${message.author.id}_${target.id}_${item}_${amount}_${price}`).setLabel('رفض 🔴').setStyle(ButtonStyle.Danger)
+      );
+
+      return message.reply({ content: `${target}`, embeds: [tradeEmbed], components: [buttonsRow] });
+  }
+
+  // 3. أمر طلب شراء مورد من عضو آخر (نصي) 🛒
+  if (cmd === 'طلب-شراء' || cmd === 'طلب_شراء' || cmd === 'اشتر-من') {
+      if (!isAllowedForCommand(message.member, 'buy_request')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+
+      const target = message.mentions.members.first(); // البائع
+      const item = args.find(arg => marketPrices[arg]);
+      const numbers = args.filter(arg => !isNaN(parseInt(arg))).map(arg => parseInt(arg));
+
+      if (!target || !item || numbers.length < 2 || target.id === message.author.id || target.user.bot) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `طلب-شراء @البائع اسم_المورد الكمية السعر`\nمثال: `طلب-شراء @user ذهب 2 1000`')] });
+      }
+
+      const amount = numbers[0];
+      const price = numbers[1];
+
+      const buyerBal = getBalance(message.author.id);
+      if (buyerBal < price) {
+          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`رصيدك لا يكفي لدفع هذا المبلغ! رصيدك: **${buyerBal.toLocaleString()}$** والسعر المطلـوب: **${price.toLocaleString()}$**`)] });
+      }
+
+      const requestEmbed = new EmbedBuilder()
+          .setTitle('🛒 طلب شراء موارد من عضو')
+          .setColor('Orange')
+          .setDescription(`يرغب المشتري ${message.author} بشراء موارد من البائع ${target}:\n\n` +
+                          `📦 **المورد:** ${item}\n` +
+                          `🔢 **الكمية:** ${amount}\n` +
+                          `💰 **السعر المعروض:** ${price.toLocaleString()}$\n\n` +
+                          `هل تقبل بيع هذه الموارد؟`);
+
+      const buttonsRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId(`buyreq_accept_${target.id}_${message.author.id}_${item}_${amount}_${price}`).setLabel('قبول البيع 🟢').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`buyreq_deny_${target.id}_${message.author.id}_${item}_${amount}_${price}`).setLabel('رفض 🔴').setStyle(ButtonStyle.Danger)
+      );
+
+      return message.reply({ content: `${target}`, embeds: [requestEmbed], components: [buttonsRow] });
+  }
+
+  // 4. أمر الحقيبة النصي
   if (cmd === 'حقيبة' || cmd === 'حقيبه' || cmd === 'محفظة' || cmd === 'محفظه') {
       if (!isAllowedForCommand(message.member, 'bag')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const buffer = await generateBagCard(message.author, getBag(message.author.id));
       return message.reply({ files: [new AttachmentBuilder(buffer, { name: 'bag.png' })] });
   }
 
-  // 3. أمر السوق النصي
+  // 5. أمر السوق النصي
   if (cmd === 'سوق' || cmd === 'السوق' || cmd === 'سوق-الموارد') {
       if (!isAllowedForCommand(message.member, 'market')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       let embed = new EmbedBuilder().setTitle('🛒 أسعار السوق المالي الحالي').setColor('Gold');
@@ -660,7 +811,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [embed] });
   }
 
-  // 4. أمر شراء مورد من السوق النصي 🛒
+  // 6. أمر شراء مورد من السوق النصي 🛒
   if (cmd === 'شراء' || cmd === 'اشتر') {
       if (!isAllowedForCommand(message.member, 'buy')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const item = args[1];
@@ -684,7 +835,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Green').setTitle('🛒 عملية شراء ناجحة').setDescription(`تم شراء **${amount}** من **${item}** بمبلغ **${cost.toLocaleString()}$**`)] });
   }
 
-  // 5. أمر بيع مورد للسوق النصي 💰
+  // 7. أمر بيع مورد للسوق النصي 💰
   if (cmd === 'بيع' || cmd === 'بع') {
       if (!isAllowedForCommand(message.member, 'sell')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const item = args[1];
@@ -706,56 +857,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Green').setTitle('💰 عملية بيع ناجحة').setDescription(`تم بيع **${amount}** من **${item}** وجني **${earn.toLocaleString()}$**`)] });
   }
 
-  // 6. أمر التجارة / البيع لعضو آخر 🤝 (جديد!)
-  if (cmd === 'تجارة' || cmd === 'تجاره' ) {
-      if (!isAllowedForCommand(message.member, 'trade')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
-
-      const target = message.mentions.members.first();
-      const item = args.find(arg => marketPrices[arg]);
-      
-      // استخراج كافة الأرقام المقبولة من الأمر
-      const numbers = args.filter(arg => !isNaN(parseInt(arg))).map(arg => parseInt(arg));
-
-      if (!target || !item || numbers.length < 2 || target.id === message.author.id || target.user.bot) {
-          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `تجارة @العضو اسم_المورد الكمية السعر`\nمثال: `تجارة @user الماس 5 2000`')] });
-      }
-
-      const amount = numbers[0];
-      const price = numbers[1];
-
-      if (amount <= 0 || price <= 0) {
-          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الكمية والسعر يجب أن يكونا أرقاماً موجبة!')] });
-      }
-
-      const sellerBag = getBag(message.author.id);
-      if (!sellerBag[item] || sellerBag[item] < amount) {
-          return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription(`أنت لا تمتلك هذه الكمية من **${item}**! لديك فقط (**${sellerBag[item] || 0}**).`)] });
-      }
-
-      const tradeEmbed = new EmbedBuilder()
-          .setTitle('🤝 عرض تجاري جديد')
-          .setColor('Blue')
-          .setDescription(`قام البائع ${message.author} بتقديم عرض تجاري لـ ${target}:\n\n` +
-                          `📦 **المورد:** ${item}\n` +
-                          `🔢 **الكمية:** ${amount}\n` +
-                          `💰 **السعر المطلوب:** ${price.toLocaleString()}$\n\n` +
-                          `هل تقبل بهذا العرض؟ اضغط على الأزرار أدناه للقبول أو الرفض.`);
-
-      const buttonsRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-              .setCustomId(`trade_accept_${message.author.id}_${target.id}_${item}_${amount}_${price}`)
-              .setLabel('قبول الصفقة 🟢')
-              .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-              .setCustomId(`trade_deny_${message.author.id}_${target.id}_${item}_${amount}_${price}`)
-              .setLabel('رفض 🔴')
-              .setStyle(ButtonStyle.Danger)
-      );
-
-      return message.reply({ content: `${target}`, embeds: [tradeEmbed], components: [buttonsRow] });
-  }
-
-  // 7. أمر تحويل المال النصي
+  // 8. أمر تحويل المال النصي
   if (cmd === 'تحويل' || cmd === 'اعطاء' || cmd === 'إعطاء') {
       if (!isAllowedForCommand(message.member, 'give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
@@ -771,7 +873,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Green').setDescription(`تم تحويل **${amount.toLocaleString()}**$ إلى ${target}`)] });
   }
 
-  // 8. أمر شحن / إضافة رصيد نصي (إداري)
+  // 9. أمر شحن / إضافة رصيد نصي (إداري)
   if (text.startsWith('اضف رصيد') || text.startsWith('أضف رصيد') || text.startsWith('شحن رصيد')) {
       if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
@@ -785,7 +887,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setTitle('👑 إضافة / شحن رصيد').setDescription(`تم شحن **${amount.toLocaleString()}**$ لحساب ${target}`)] });
   }
 
-  // 9. أمر خصم رصيد نصي (إداري)
+  // 10. أمر خصم رصيد نصي (إداري)
   if (text.startsWith('خصم رصيد') || text.startsWith('خصم نقاط')) {
       if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
@@ -802,7 +904,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setTitle('🔻 خصم رصيد').setDescription(`تم خصم **${amount.toLocaleString()}**$ من ${target}\nالرصيد المتبقي: **${newBal.toLocaleString()}**$`)] });
   }
 
-  // 10. أمر شحن / إضافة مورد نصي (إداري)
+  // 11. أمر شحن / إضافة مورد نصي (إداري)
   if (text.startsWith('اضف مورد') || text.startsWith('أضف مورد') || text.startsWith('شحن مورد')) {
       if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       
@@ -819,7 +921,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setTitle('👑 إضافة / شحن مورد').setDescription(`تم إضافة **${amount}** من **${item}** إلى حقيبة ${target}`)] });
   }
 
-  // 11. أمر خصم مورد نصي (إداري)
+  // 12. أمر خصم مورد نصي (إداري)
   if (text.startsWith('خصم مورد')) {
       if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       
