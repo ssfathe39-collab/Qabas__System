@@ -600,7 +600,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [embed] });
   }
 
-  // 4. أمر شراء مورد النصي (جديد 🛒)
+  // 4. أمر شراء مورد النصي 🛒
   if (cmd === 'شراء' || cmd === 'اشتر') {
       if (!isAllowedForCommand(message.member, 'buy')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const item = args[1];
@@ -624,7 +624,7 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Green').setTitle('🛒 عملية شراء ناجحة').setDescription(`تم شراء **${amount}** من **${item}** بمبلغ **${cost.toLocaleString()}$**`)] });
   }
 
-  // 5. أمر بيع مورد النصي (جديد 💰)
+  // 5. أمر بيع مورد النصي 💰
   if (cmd === 'بيع' || cmd === 'بع') {
       if (!isAllowedForCommand(message.member, 'sell')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const item = args[1];
@@ -650,7 +650,8 @@ client.on('messageCreate', async message => {
   if (cmd === 'تحويل' || cmd === 'اعطاء' || cmd === 'إعطاء') {
       if (!isAllowedForCommand(message.member, 'give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
-      const amount = parseInt(args[2]);
+      const amount = parseInt(args.find(arg => !isNaN(parseInt(arg))));
+      
       if (!target || isNaN(amount) || amount <= 0 || target.id === message.author.id) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `تحويل @العضو المبلغ`')] });
 
       const senderBalance = getBalance(message.author.id);
@@ -665,8 +666,7 @@ client.on('messageCreate', async message => {
   if (text.startsWith('اضف رصيد') || text.startsWith('أضف رصيد') || text.startsWith('شحن رصيد')) {
       if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
-      const lastArg = args[args.length - 1];
-      const amount = parseInt(lastArg);
+      const amount = parseInt(args.find(arg => !isNaN(parseInt(arg))));
 
       if (!target || isNaN(amount) || amount <= 0) {
           return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `شحن رصيد @العضو المبلغ` أو `اضف رصيد @العضو المبلغ`')] });
@@ -680,8 +680,7 @@ client.on('messageCreate', async message => {
   if (text.startsWith('خصم رصيد') || text.startsWith('خصم نقاط')) {
       if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
       const target = message.mentions.members.first();
-      const lastArg = args[args.length - 1];
-      const amount = parseInt(lastArg);
+      const amount = parseInt(args.find(arg => !isNaN(parseInt(arg))));
 
       if (!target || isNaN(amount) || amount <= 0) {
           return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم رصيد @العضو المبلغ`')] });
@@ -694,14 +693,15 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setTitle('🔻 خصم رصيد').setDescription(`تم خصم **${amount.toLocaleString()}**$ من ${target}\nالرصيد المتبقي: **${newBal.toLocaleString()}**$`)] });
   }
 
-  // 9. أمر شحن / إضافة مورد نصي (إداري)
+  // 9. أمر شحن / إضافة مورد نصي (إداري - معدل ليكون مرناً)
   if (text.startsWith('اضف مورد') || text.startsWith('أضف مورد') || text.startsWith('شحن مورد')) {
       if (!isAllowedForCommand(message.member, 'admin_give')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+      
       const target = message.mentions.members.first();
-      const item = args[2];
-      const amount = parseInt(args[3]);
+      const item = args.find(arg => marketPrices[arg]);
+      const amount = parseInt(args.find(arg => !isNaN(parseInt(arg))));
 
-      if (!target || !item || !marketPrices[item] || isNaN(amount) || amount <= 0) {
+      if (!target || !item || isNaN(amount) || amount <= 0) {
           return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `اضف مورد @العضو اسم_المورد الكمية`\nالموارد المتاحة: (الماس, ذهب, نحاس, حديد, يورانيوم, وقود)')] });
       }
 
@@ -710,14 +710,15 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [new EmbedBuilder().setColor('Gold').setTitle('👑 إضافة / شحن مورد').setDescription(`تم إضافة **${amount}** من **${item}** إلى حقيبة ${target}`)] });
   }
 
-  // 10. أمر خصم مورد نصي (إداري)
+  // 10. أمر خصم مورد نصي (إداري - معدل ليكون مرناً)
   if (text.startsWith('خصم مورد')) {
       if (!isAllowedForCommand(message.member, 'admin_remove')) return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('❌ ليس لديك الرتبة المسموح لها باستعمال هذا الأمر!')] });
+      
       const target = message.mentions.members.first();
-      const item = args[2];
-      const amount = parseInt(args[3]);
+      const item = args.find(arg => marketPrices[arg]);
+      const amount = parseInt(args.find(arg => !isNaN(parseInt(arg))));
 
-      if (!target || !item || !marketPrices[item] || isNaN(amount) || amount <= 0) {
+      if (!target || !item || isNaN(amount) || amount <= 0) {
           return message.reply({ embeds: [new EmbedBuilder().setColor('Red').setDescription('الاستخدام الصحيح: `خصم مورد @العضو اسم_المورد الكمية`\nالموارد المتاحة: (الماس, ذهب, نحاس, حديد, يورانيوم, وقود)')] });
       }
 
