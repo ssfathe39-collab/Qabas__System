@@ -1,4 +1,18 @@
 require('dotenv').config();
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// إنشاء سيرفر ويب بسيط ليستجيب لخدمة UptimeRobot
+app.get('/', (req, res) => {
+  res.send('Bot is running alive!');
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 Server Express running on port ${PORT}`);
+});
+
+// باقي كود ديسكورد الخاص بك...
 const { 
   Client, 
   GatewayIntentBits, 
